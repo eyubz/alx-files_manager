@@ -1,32 +1,48 @@
 import sha1 from 'sha1';
 import Queue from 'bull';
-import db from '../utils/db';
+import dbClient from '../utils/db';
 
-/**
- * UsersController
- */
 const userQueue = new Queue('userQueue');
 
 class UsersController {
-  static async postNew(req, res) {
-    const { email, password } = req.body;
-    if (!email) return res.status(400).send({ error: 'Missing email' });
-    if (!password) return res.status(400).send({ error: 'Missing password' });
+  static async postNew(request, response) {
+    const { email, password } = request.body;
 
-    const user = await db.users.find({ email });
-    if (user) return res.status(400).send({ error: 'Already exist' });
+    if (!email) return response.status(400).send({ error: 'Missing email' });
 
-    const hashedPassword = sha1(password);
-    let newUser;
-    try {
-      newUser = await db.users.insert({ email, password: hashedPassword });
-      await userQueue.add({
-        userId: newUser.insertedId.toString(),
-      });
-    } catch (error) {
-      return res.status(500).send({ error: 'Error creating user' });
+    if (!password) {
+      return response.status(400).send({ error: 'Missing password' });
     }
-    return res.status(201).send({ email: newUser.email, id: newUser._id });
+
+    const emailExists = await dbClient.usersCollection.findOne({ email });
+
+    if (emailExists) {
+      return response.status(400).send({ error: 'Already exist' });
+    }
+
+    const sha1Password = sha1(password);
+
+    let result;
+    try {
+      result = await dbClient.usersCollection.insertOne({
+        email,
+        password: sha1Password,
+      });
+    } catch (err) {
+      await userQueue.add({});
+      return response.status(500).send({ error: 'Error creating user.' });
+    }
+
+    const user = {
+      id: result.insertedId,
+      email,
+    };
+
+    await userQueue.add({
+      userId: result.insertedId.toString(),
+    });
+
+    return response.status(201).send(user);
   }
 }
 

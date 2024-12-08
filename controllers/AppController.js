@@ -13,10 +13,10 @@ class AppController {
     res.status(200).send(status);
   }
 
-  static getStats(_, res) {
+  static async getStats(_, res) {
     const stats = {
-      users: dbClient.nbUsers(),
-      files: dbClient.nbFiles(),
+      users: await dbClient.nbUsers(),
+      files: await dbClient.nbFiles(),
     };
     res.status(200).send(stats);
   }

@@ -4,15 +4,16 @@ const waitConnection = () => {
   return new Promise((resolve, reject) => {
     let i = 0;
     const repeatFct = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wrap setTimeout in a promise
-      i += 1;
-      if (i >= 10) {
-        reject(new Error("Max retries reached"));
-      } else if (!dbClient.isAlive()) {
-        repeatFct();
-      } else {
-        resolve();
-      }
+      await setTimeout(() => {
+        i += 1;
+        if (i >= 10) {
+          reject();
+        } else if (!dbClient.isAlive()) {
+          repeatFct();
+        } else {
+          resolve();
+        }
+      }, 1000);
     };
     repeatFct();
   });
